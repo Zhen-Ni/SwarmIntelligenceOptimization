@@ -11,7 +11,7 @@ from random import random
 import numpy as np
 import numpy.typing as npt
 
-__all__ = ('ParticleSwarm', 'pso_coefficients')
+__all__ = ('ParticleSwarmSolver', 'pso_coefficients')
 
 DEFAULT_W = 0.5
 DEFAULT_C1 = 2.
@@ -181,7 +181,7 @@ class Particle:
             self._y_opt = self._y
 
 
-class ParticleSwarm:
+class ParticleSwarmSolver:
     """Particle swarm optimization algorithm.
 
     It works by having a population (called a swarm) of candidate
@@ -207,8 +207,8 @@ class ParticleSwarm:
     The coefficients w, c1 and c2 cam be determined by a single
     parameters phi by calling `pso_coefficients(phi)`, which returns a
     dict of w, c1, c2 with their corresponding values. Thus, it is
-    convenient to instantiation ParticleSwarm by invoking:
-    `ParticleSwarm(fun, x0s, v0s, v_limit=v_limit,
+    convenient to instantiation ParticleSwarmSolver by invoking:
+    `ParticleSwarmSolver(fun, x0s, v0s, v_limit=v_limit,
     **pso_coefficients(phi))`. To ensure convergence, phi should be
     larger than 4.
 
@@ -349,7 +349,7 @@ def _get_Χ_from_φ(φ: float) -> float:
 
 
 def pso_coefficients(phi) -> dict[str, float]:
-    """Get w, c1 and c2 for ParticleSwarm from one single argument.
+    """Get w, c1 and c2 for ParticleSwarmSolver from a single argument.
 
     To ensure convergence, phi should be larger than 4. Larger phi
     makes it better for local search while smaller phi makes the
