@@ -18,6 +18,10 @@ DEFAULT_C1 = 2.
 DEFAULT_C2 = 2.
 
 
+class PSOInitError(ValueError):
+    pass
+
+
 class TargetFunction(typing.Protocol):
     def __call__(self, x: npt.NDArray, *args: typing.Any) -> float: ...
 
@@ -37,6 +41,21 @@ class Particle:
     the particle's best known position, p_opt is the swarm's best
     known position in the current step.
 
+    For optimization problems with constraints, the positions of the
+    particles are evaluated by the constraint functions. The
+    constraint functions are inequality functions with general form:
+
+    constraint_func(x) <= 0
+
+    To avoid any effect on the performance of the algorithm, the
+    velocity and infeasible position of the particles outside the
+    constrainted domain are left unaltered. The evaluation of the
+    objective function is skipped, thereby preventing the infeasible
+    position from being set as a personal and/or global best.  Using
+    this method, particles outside the feasible search space will
+    eventually be drawn back within the space by the influence of
+    their personal and neighborhood bests. [1]
+
     Parameters
     ----------
     fun : callable
@@ -53,6 +72,12 @@ class Particle:
         variables (dimension of the input variable of fun).
     v0 : ndarray, shape (n,), optional
         Initial speed of the particle. Defaults to all zeros.
+    constraints : list of callable, optional
+        Constraints definition. The constraint have general
+        inequality form:
+            ``fun(x) <= 0``
+        Here the vector of independent variables x is passed as
+        ndarray of shape (n,) and fun returns a float.
     w : float, optional
         Inertia weight. Defaults to 0.5.
     c1 : float, optional
@@ -63,6 +88,12 @@ class Particle:
         The max value of particle. If a non-None value is set,
         Particle speed will be normalized to make sure its L-∞
         norm does not exceed v_limit. Defaults to None.
+
+    Reference
+    ---------
+    [1] BRATTON D, KENNEDY J. Defining a Standard for Particle Swarm
+        Optimization[C/OL]//2007 IEEE Swarm Intelligence
+        Symposium. Honolulu, HI, USA: IEEE, 2007: 120-127[2023-08-16].
         """
 
     def __init__(self,
@@ -70,19 +101,21 @@ class Particle:
                  x0: npt.NDArray,
                  v0: npt.NDArray = None,
                  *,
+                 constraints: tuple[TargetFunction] = (),
                  w: float | None = None,
                  c1: float | None = None,
                  c2: float | None = None,
                  v_limit: float | None = None):
         # Objective function
         self._fun = fun
+        self._constraints = constraints
 
         # Position and speed of the particle
         self._x = x0
         self._v = np.zeros_like(x0) if v0 is None else v0
 
         # Value of this particle
-        self._y = self._fun(self._x)
+        self._y = self._objective_function(self._x)
 
         # Weights
         self._w = DEFAULT_W if w is None else w
@@ -102,7 +135,7 @@ class Particle:
         return self._x
 
     @property
-    def y(self) -> float:
+    def y(self) -> float | None:
         return self._y
 
     @property
@@ -142,7 +175,7 @@ class Particle:
         return self._x_opt
 
     @property
-    def y_opt(self) -> float:
+    def y_opt(self) -> float | None:
         return self._y_opt
 
     @property
@@ -175,10 +208,22 @@ class Particle:
         # Updata particle
         self._x = self._x + v
         self._v = v
-        self._y = self._fun(self._x)
-        if self._y < self._y_opt:
-            self._x_opt = self._x
-            self._y_opt = self._y
+        self._y = self._objective_function(self._x)
+        if self._y is not None:
+            if (self._y_opt is None) or (self._y < self._y_opt):
+                self._x_opt = self._x
+                self._y_opt = self._y
+
+    def _objective_function(self, x: npt.NDArray) -> float | None:
+        """Get the result of the objective function.
+
+        The constraints are also checked here. If the constraints are
+        not satisfied, this funciton returns None.
+        """
+        for c in self._constraints:
+            if c(x) > 0:
+                return None
+        return self._fun(x)
 
 
 class ParticleSwarmSolver:
@@ -212,6 +257,11 @@ class ParticleSwarmSolver:
     **pso_coefficients(phi))`. To ensure convergence, phi should be
     larger than 4.
 
+    For optimization problems with constraints, the positions of the
+    particles are evaluated by the constraint functions. The
+    constraint functions are inequality functions with general form:
+    constraint_func(x) <= 0.
+
     Parameters
     ----------
     fun : callable
@@ -230,6 +280,12 @@ class ParticleSwarmSolver:
         is the number of particles.
     v0s : ndarray, shape (n, s), optional
         Initial speed of the particle. Defaults to all zeros.    
+    constraints : list of callable, optional
+        Constraints definition. The constraint have general
+        inequality form:
+            ``fun(x) <= 0``
+        Here the vector of independent variables x is passed as
+        ndarray of shape (n,) and fun returns a float.
     w : float, optional
         Inertia weight. Defaults to 0.5.
     c1 : float, optional
@@ -257,17 +313,26 @@ class ParticleSwarmSolver:
                  x0s: npt.NDArray,
                  v0s: npt.NDArray = None,
                  *,
+                 constraints: tuple[TargetFunction] = (),
                  w: float | None = None,
                  c1: float | None = None,
                  c2: float | None = None,
                  v_limit: float | None = None):
         self._particles = []
+        has_valid_particle = False
         for i in range(x0s.shape[1]):
             x0 = x0s[:, i]
             v0 = v0s[:, i] if v0s is not None else None
-            self._particles.append(Particle(
-                fun, x0, v0, w=w,
-                c1=c1, c2=c2, v_limit=v_limit))
+            p = Particle(fun, x0, v0, constraints=constraints, w=w,
+                         c1=c1, c2=c2, v_limit=v_limit)
+            self._particles.append(p)
+            if p.y_opt is not None:
+                has_valid_particle = True
+        # Raise PSOInitError if None of the initial particles meet the
+        # constraints.
+        if not has_valid_particle:
+            raise PSOInitError('no valid initial particle found')
+
         self._swarm_best = self._get_swarm_best()
         self._global_best: Particle | None = None
 
@@ -292,18 +357,16 @@ class ParticleSwarmSolver:
                     ) -> Particle | list[Particle]:
         return self._particles[index]
 
-    def _get_swarm_worst(self) -> Particle:
-        """Get the worst particle in the current iteration."""
-        return max(self._particles, key=lambda p: p.y)
-
     def _get_swarm_best(self) -> Particle:
         """Get the best particle in the current iteration."""
-        return min(self._particles, key=lambda p: p.y)
+        return min(self._particles,
+                   key=lambda p: p.y if p.y is not None else np.inf)
 
     def _get_global_best(self) -> Particle:
         """Get the particle with best value whthin the whole searching
         procedure."""
-        return min(self._particles, key=lambda p: p.y_opt)
+        return min(self._particles,
+                   key=lambda p: p.y_opt if p.y_opt is not None else np.inf)
 
     def step(self):
         """Update all particles.
@@ -331,6 +394,8 @@ class ParticleSwarmSolver:
         """Value of the objective function corresponding to the
         estimated optimal solution."""
         self._global_best = self._global_best or self._get_global_best()
+        # Global best must not be None after a success initialization.
+        assert self._global_best.y_opt is not None
         return self._global_best.y_opt
 
 
@@ -338,7 +403,7 @@ def _get_Χ_from_φ(φ: float) -> float:
     """Get w, c1 and c2 from another set of parameters.
 
     To ensure convergence, φ should be larger than 4.
-    
+
     Reference
     ---------
     [1] BRATTON D, KENNEDY J. Defining a Standard for Particle Swarm
