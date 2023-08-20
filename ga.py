@@ -24,7 +24,7 @@ class TargetFunction(typing.Protocol):
 
 
 class Chromosome:
-    """chromosome stores genes and performs crossover and mutation.
+    """Chromosome stores genes and performs crossover and mutation.
 
     Parameters
     ----------
@@ -36,7 +36,7 @@ class Chromosome:
         The initial genes. It contains a sequence of ints from
         0 (inclusice) to `gene_size` (exclusize).
     gene_size : int
-        The number of choices of each gene.
+        The number of choices of each gene. should be larger than 1.
 
         """
 
@@ -47,6 +47,8 @@ class Chromosome:
         self._fun = fun
         self.genes = list(genes)
         self._gene_size = gene_size
+        if gene_size < 2:
+            raise ValueError('gene_size should be larger than 1')
         for v in self.genes:
             if not v < self._gene_size:
                 raise OverflowError('gene value larger than gene size')
@@ -64,6 +66,8 @@ class Chromosome:
     def mutate(self, p: float):
         """Mutation, with probability p."""
         p /= len(self.genes)
+        # Correct the probability if a gene mutates to itself.
+        p *= self._gene_size / (self._gene_size - 1)
         for i in range(len(self.genes)):
             if p < random():
                 continue
