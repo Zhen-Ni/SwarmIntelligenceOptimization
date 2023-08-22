@@ -34,7 +34,7 @@ class Chromosome:
         number.
     genes : sequence of ints
         The initial genes. It contains a sequence of ints from
-        0 (inclusice) to `gene_size` (exclusize).
+        0 (inclusive) to `gene_size` (exclusive).
     gene_size : int
         The number of choices of each gene. should be larger than 1.
 
@@ -59,7 +59,7 @@ class Chromosome:
         if p < random():
             return
         self._y = None
-        n = randrange(len(self.genes))
+        n = randrange(len(self.genes)) + 1
         self.genes[n:], other.genes[n:] = \
             other.genes[n:], self.genes[n:]
 
