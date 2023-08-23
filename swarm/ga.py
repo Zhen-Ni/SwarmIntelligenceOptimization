@@ -153,6 +153,17 @@ class GeneticAlgorithmSolver:
         for c in self._chromosomes:
             c.mutate(self._p_mutation)
 
+    def _preserve_elitism(self):
+        """Perform elite preservence.
+
+        This is done by replacing the worst chromosome in the
+        current generatoin by the best chromosome in the previous
+        generation.
+        """
+        worst_idx = max(range(len(self._chromosomes)),
+                        key=lambda i: self._chromosomes[i].evaluate())
+        self._chromosomes[worst_idx] = self._polulation_best
+
     def _get_population_best(self):
         return min(self._chromosomes,
                    key=lambda c: c.evaluate())
@@ -165,6 +176,7 @@ class GeneticAlgorithmSolver:
         """
         self._cross()
         self._mutate()
+        self._preserve_elitism()
         self._polulation_best = self._get_population_best()
         return self.y
 

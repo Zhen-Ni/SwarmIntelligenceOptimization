@@ -26,12 +26,18 @@ class TestGeneticAlgorithm(unittest.TestCase):
             x = dr.decode(genes)
             return fun(x)
         np.random.seed(0)
-        genes = np.random.randint(0, 10, [6, 400])
+        genes = np.random.randint(0, 10, [6, 100])
         ga = GeneticAlgorithmSolver(coded_fun, genes, 10)
-        for i in range(100):
-            tol = ga.step()
-            if tol < 1e-3:
-                break
+        last_y = ga.y
+        count = 0
+        while y := ga.step():
+            if y == last_y:
+                count += 1
+                if count == 50:
+                    break
+            else:
+                count = 0
+            last_y = y
         self.assertTrue(np.allclose([dr.decode(ga.x)], [1.0],
                                     atol=0.05))
         self.assertAlmostEqual(ga.y, 0.0, delta=0.01)
@@ -50,12 +56,12 @@ class TestGeneticAlgorithm(unittest.TestCase):
 
         np.random.seed(0)
 
-        genes = np.random.randint(0, 10, [6, 800])
+        genes = np.random.randint(0, 10, [6, 1000])
         ga = GeneticAlgorithmSolver(coded_fun, genes, 10)
-        for i in range(100):
+        for i in range(200):
             ga.step()
-        self.assertAlmostEqual(dr.decode(ga.x[:3]), 2.2, delta=0.2)
-        self.assertAlmostEqual(dr.decode(ga.x[3:]), 1.5, delta=0.2)
+        self.assertAlmostEqual(dr.decode(ga.x[:3]), 2.2, delta=0.1)
+        self.assertAlmostEqual(dr.decode(ga.x[3:]), 1.5, delta=0.1)
         self.assertAlmostEqual(ga.y, 2.0, delta=0.1)
 
 
