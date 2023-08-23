@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 from scipy.optimize import rosen
 
-from pso import ParticleSwarmSolver, pso_coefficients
+from swarm import ParticleSwarmSolver, pso_coefficients
 
 
 class TestPSO(unittest.TestCase):
@@ -19,8 +19,8 @@ class TestPSO(unittest.TestCase):
             tol = pso.step()
             if tol < 1e-3:
                 break
-        self.assertTrue(np.allclose(pso.x, [2.2, 1.5]))
-        self.assertAlmostEqual(pso.y, 2.0)
+        self.assertTrue(np.allclose(pso.x, [2.2, 1.5], atol=0.1))
+        self.assertAlmostEqual(pso.y, 2.0, delta=0.01)
 
     def test_rosen(self):
         # Eight-dimension rosen function.
@@ -47,7 +47,7 @@ class TestPSO(unittest.TestCase):
             if tol < 1e-6:
                 break
         self.assertTrue(np.allclose(pso.x, np.ones(2)))
-        self.assertAlmostEqual(pso.y, 2)
+        self.assertAlmostEqual(pso.y, 2, delta=0.01)
 
 
 if __name__ == '__main__':

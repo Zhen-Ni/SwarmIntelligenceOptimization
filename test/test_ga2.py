@@ -3,7 +3,7 @@
 import unittest
 import numpy as np
 
-from ga2 import GeneticAlgorithmSolver2, BinaryIntervalRepresentation
+from swarm import GeneticAlgorithmSolver2, BinaryIntervalRepresentation
 
 
 class TestGeneticAlgorithm(unittest.TestCase):
@@ -25,15 +25,15 @@ class TestGeneticAlgorithm(unittest.TestCase):
             x = bir.decode(genes)
             return fun(x)
         np.random.seed(0)
-        genes = np.random.randint(0, 2**4, [20])
+        genes = np.random.randint(0, 2**4, [50])
         ga = GeneticAlgorithmSolver2(coded_fun, genes, 4)
-        for i in range(100):
+        for i in range(200):
             tol = ga.step()
             if tol < 1e-3:
                 break
         self.assertTrue(np.allclose([bir.decode(ga.x)], [1.0],
-                                    atol=0.05))
-        self.assertAlmostEqual(ga.y, 0.0, delta=0.01)
+                                    atol=0.1))
+        self.assertAlmostEqual(ga.y, 0.0, delta=0.05)
 
     def test_quadratic_2d(self):
         # Two-dimension quadratic

@@ -6,12 +6,9 @@
 
 from __future__ import annotations
 import typing
+from random import random, randrange
 
-from random import random, randrange, choices
-import copy
-import numpy.typing as npt
-
-from ga import GeneticAlgorithmSolver, Chromosome
+from .ga import GeneticAlgorithmSolver, Chromosome
 
 
 __all__ = 'GeneticAlgorithmSolver2', 'BinaryIntervalRepresentation'
