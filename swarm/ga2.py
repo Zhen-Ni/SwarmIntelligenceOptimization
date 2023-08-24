@@ -72,13 +72,15 @@ class BinaryChromosome(Chromosome):
             raise ValueError('gene must be non-negative')
         if not genes < (1 << self._length):
             raise OverflowError('gene length too large')
+        self._y = None
         self._genes = genes
 
-    def cross(self, other: BinaryChromosome, p: float):
+    def cross(self, other: BinaryChromosome, p: float) -> None:
         """Crossover, with probability p."""
         if p < random():
             return
         self._y = None
+        other._y = None
         n = randrange(self._length)
         mask = (1 << n) - 1
         lhs_tail = self._genes & mask
@@ -86,7 +88,7 @@ class BinaryChromosome(Chromosome):
         self._genes = self._genes & ~mask | rhs_tail
         other._genes = other._genes & ~mask | lhs_tail
 
-    def mutate(self, p: float):
+    def mutate(self, p: float) -> None:
         """Mutation, with probability p."""
         p /= self._length
         for i in range(self._length):

@@ -2,6 +2,7 @@
 
 import unittest
 import numpy as np
+from scipy.optimize import rosen
 
 from swarm import GeneticAlgorithmSolver2, BinaryIntervalRepresentation
 
@@ -48,7 +49,7 @@ class TestGeneticAlgorithm(unittest.TestCase):
             return fun([x0, x1])
 
         np.random.seed(0)
-        genes = np.random.randint(0, 1 << 12, [500])
+        genes = np.random.randint(0, 1 << 12, [400])
         ga = GeneticAlgorithmSolver2(coded_fun, genes, 12)
         for i in range(100):
             ga.step()
@@ -58,6 +59,34 @@ class TestGeneticAlgorithm(unittest.TestCase):
                                1.5, delta=0.1)
         self.assertAlmostEqual(ga.y, 2.0, delta=0.01)
 
+    def test_rosen(self):
+        # Three-dimensional rosen function.
+        dim = 3
+        nbits = 4
+        np.random.seed(0)
+        bir = BinaryIntervalRepresentation(0., 2., nbits)
+        genes = np.random.randint(0, 1 << (dim*nbits), [400])
+
+        def decode(x):
+            xs = []
+            for i in range(dim):
+                xi = bir.decode((x >> (i * nbits)) & ((1 << nbits) - 1))
+                xs.append(xi)
+            return xs
+
+        def coded_rosen(x):
+            xs = decode(x)
+            return rosen(xs)
+        ga = GeneticAlgorithmSolver2(
+            coded_rosen, genes, nbits*dim, p_mutation=0.1)
+        for i in range(100):
+            ga.step()
+
+        xs = decode(ga.x)
+        self.assertTrue(np.allclose(xs, [1, 1, 1], atol=0.1))
+        self.assertAlmostEqual(ga.y, 0.0, delta=0.1)
+
 
 if __name__ == '__main__':
     unittest.main(argv=[''], exit=False)
+    from scipy.optimize import fmin

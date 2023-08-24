@@ -45,7 +45,7 @@ class Chromosome:
                  genes: typing.Sequence[int],
                  gene_size: int):
         self._fun = fun
-        self.genes = list(genes)
+        self._genes = list(genes)
         self._gene_size = gene_size
         if gene_size < 2:
             raise ValueError('gene_size should be larger than 1')
@@ -54,16 +54,21 @@ class Chromosome:
                 raise OverflowError('gene value larger than gene size')
         self._y: float | None = None
 
-    def cross(self, other: Chromosome, p: float):
+    @property
+    def genes(self) -> list[int]:
+        return self._genes
+
+    def cross(self, other: Chromosome, p: float) -> None:
         """Crossover, with probability p."""
         if p < random():
             return
         self._y = None
+        other._y = None
         n = randrange(len(self.genes)) + 1
         self.genes[n:], other.genes[n:] = \
             other.genes[n:], self.genes[n:]
 
-    def mutate(self, p: float):
+    def mutate(self, p: float) -> None:
         """Mutation, with probability p."""
         p /= len(self.genes)
         # Correct the probability if a gene mutates to itself.
